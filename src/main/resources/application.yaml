@@ -1,0 +1,49 @@
+spring:
+  application:
+    name: spring-boot-otel-demo
+
+server:
+  port: 8080
+
+# Logging configuration
+logging:
+  level:
+    root: INFO
+    com.example.demo: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+
+# OpenTelemetry configuration
+otel:
+  service:
+    name: ${spring.application.name}
+  exporter:
+    otlp:
+      # OTLP endpoint - configure this to point to your collector
+      # Examples:
+      # - http://localhost:4318 (local OTLP HTTP collector)
+      # - http://localhost:4317 (local OTLP gRPC collector)
+      # - https://your-cloud-provider-endpoint
+      endpoint: http://localhost:4318
+      # Protocol: http/protobuf or grpc
+      protocol: http/protobuf
+      # Headers for authentication (if needed)
+      # headers:
+      #   Authorization: "Bearer your-token-here"
+  logs:
+    exporter: otlp
+  resource:
+    attributes:
+      service.name: ${spring.application.name}
+      service.version: "1.0.0"
+      deployment.environment: "development"
+
+# Management endpoints (optional - for health checks)
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
