@@ -3,30 +3,46 @@
     <!-- Console appender for local development -->
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
-            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [trace_id=%X{trace_id}, span_id=%X{span_id}] %-5level %logger{36} - %msg%n</pattern>
         </encoder>
     </appender>
 
-    <!-- OpenTelemetry MDC instrumentation for log correlation -->
-    <!-- Logs will be exported via the OpenTelemetry SDK configured in the application -->
+    <!-- OpenTelemetry Appender for sending logs to OTLP endpoint -->
+    <!-- This appender bridges SLF4J logs to OpenTelemetry and includes trace context -->
+    <appender name="OTEL" class="io.opentelemetry.instrumentation.logback.appender.v1_0.OpenTelemetryAppender">
+        <!-- Capture code attributes (file, line number, etc.) -->
+        <captureExperimentalAttributes>true</captureExperimentalAttributes>
+        <!-- Capture MDC attributes -->
+        <captureMdcAttributes>*</captureMdcAttributes>
+        <!-- Capture key-value pairs -->
+        <captureKeyValuePairAttributes>true</captureKeyValuePairAttributes>
+        <!-- Capture logger context -->
+        <captureCodeAttributes>true</captureCodeAttributes>
+        <!-- Capture marker attributes -->
+        <captureMarkerAttribute>true</captureMarkerAttribute>
+    </appender>
 
     <!-- Root logger configuration -->
     <root level="INFO">
         <!-- Log to console for local visibility -->
         <appender-ref ref="CONSOLE" />
+        <!-- Send logs to OpenTelemetry for distributed tracing -->
+        <appender-ref ref="OTEL" />
     </root>
 
     <!-- Application-specific logger with DEBUG level -->
     <logger name="com.example.demo" level="DEBUG" additivity="false">
         <appender-ref ref="CONSOLE" />
+        <appender-ref ref="OTEL" />
     </logger>
 
     <!-- Spring Framework loggers -->
     <logger name="org.springframework" level="INFO" additivity="false">
         <appender-ref ref="CONSOLE" />
+        <appender-ref ref="OTEL" />
     </logger>
 
-    <!-- OpenTelemetry SDK logger -->
+    <!-- OpenTelemetry SDK logger - only to console to avoid recursion -->
     <logger name="io.opentelemetry" level="INFO" additivity="false">
         <appender-ref ref="CONSOLE" />
     </logger>
