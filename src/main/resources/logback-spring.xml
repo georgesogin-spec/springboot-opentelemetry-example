@@ -3,12 +3,12 @@
     <!-- Console appender for local development -->
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
-            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [trace_id=%X{trace_id}, span_id=%X{span_id}] %-5level %logger{36} - %msg%n</pattern>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
         </encoder>
     </appender>
 
     <!-- OpenTelemetry Appender for sending logs to OTLP endpoint -->
-    <!-- This appender bridges SLF4J logs to OpenTelemetry and includes trace context -->
+    <!-- This appender bridges SLF4J logs to OpenTelemetry for log forwarding -->
     <appender name="OTEL" class="io.opentelemetry.instrumentation.logback.appender.v1_0.OpenTelemetryAppender">
         <!-- Capture code attributes (file, line number, etc.) -->
         <captureExperimentalAttributes>true</captureExperimentalAttributes>
