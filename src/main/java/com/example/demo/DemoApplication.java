@@ -1,13 +1,19 @@
 package com.example.demo;
 
+import io.opentelemetry.api.GlobalOpenTelemetry;
 import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.common.Attributes;
-import io.opentelemetry.api.common.AttributeKey;
+import io.opentelemetry.context.propagation.ContextPropagators;
 import io.opentelemetry.exporter.otlp.logs.OtlpGrpcLogRecordExporter;
+import io.opentelemetry.exporter.otlp.trace.OtlpGrpcSpanExporter;
+import io.opentelemetry.extension.trace.propagation.B3Propagator;
 import io.opentelemetry.sdk.OpenTelemetrySdk;
 import io.opentelemetry.sdk.logs.SdkLoggerProvider;
 import io.opentelemetry.sdk.logs.export.BatchLogRecordProcessor;
 import io.opentelemetry.sdk.resources.Resource;
+import io.opentelemetry.sdk.trace.SdkTracerProvider;
+import io.opentelemetry.sdk.trace.export.BatchSpanProcessor;
+import io.opentelemetry.semconv.ResourceAttributes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -16,6 +22,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
 
 import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
 
 @SpringBootApplication
 public class DemoApplication {
@@ -40,17 +47,30 @@ public class DemoApplication {
         logger.info("Service name: {}", serviceName);
     }
 
+    private OpenTelemetrySdk openTelemetrySdk;
+
     @Bean
     public OpenTelemetry openTelemetry() {
-        logger.info("Configuring OpenTelemetry SDK...");
+        logger.info("Configuring OpenTelemetry SDK for distributed tracing...");
         
-        // Create resource with service information
+        // Create resource with service information using semantic conventions
         Resource resource = Resource.getDefault()
                 .merge(Resource.create(Attributes.builder()
-                        .put(AttributeKey.stringKey("service.name"), serviceName)
-                        .put(AttributeKey.stringKey("service.version"), "1.0.0")
-                        .put(AttributeKey.stringKey("deployment.environment"), "development")
+                        .put(ResourceAttributes.SERVICE_NAME, serviceName)
+                        .put(ResourceAttributes.SERVICE_VERSION, "1.0.0")
+                        .put(ResourceAttributes.DEPLOYMENT_ENVIRONMENT, "development")
                         .build()));
+
+        // Configure OTLP Trace Exporter for distributed tracing
+        OtlpGrpcSpanExporter spanExporter = OtlpGrpcSpanExporter.builder()
+                .setEndpoint(otlpEndpoint)
+                .build();
+
+        // Create SdkTracerProvider with batch processor
+        SdkTracerProvider sdkTracerProvider = SdkTracerProvider.builder()
+                .setResource(resource)
+                .addSpanProcessor(BatchSpanProcessor.builder(spanExporter).build())
+                .build();
 
         // Configure OTLP Log Exporter
         OtlpGrpcLogRecordExporter logExporter = OtlpGrpcLogRecordExporter.builder()
@@ -63,21 +83,34 @@ public class DemoApplication {
                 .addLogRecordProcessor(BatchLogRecordProcessor.builder(logExporter).build())
                 .build();
 
-        // Build OpenTelemetry SDK
-        OpenTelemetrySdk openTelemetrySdk = OpenTelemetrySdk.builder()
-                .setLoggerProvider(sdkLoggerProvider)
-                .build();
+        // Configure context propagators for distributed tracing
+        // Using B3 propagator for compatibility with Temporal and other distributed systems
+        ContextPropagators contextPropagators = ContextPropagators.create(
+                B3Propagator.injectingMultiHeaders()
+        );
 
-        // Add shutdown hook
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            logger.info("Shutting down OpenTelemetry SDK...");
-            sdkLoggerProvider.close();
-        }));
+        // Build OpenTelemetry SDK with all components
+        openTelemetrySdk = OpenTelemetrySdk.builder()
+                .setTracerProvider(sdkTracerProvider)
+                .setLoggerProvider(sdkLoggerProvider)
+                .setPropagators(contextPropagators)
+                .buildAndRegisterGlobal();
 
         logger.info("OpenTelemetry SDK configured successfully!");
+        logger.info("Global OpenTelemetry instance registered for distributed tracing");
+        logger.info("Context propagation enabled with B3 propagator");
         logger.debug("OTLP endpoint: {}", otlpEndpoint);
         logger.debug("Service name: {}", serviceName);
 
         return openTelemetrySdk;
+    }
+
+    @PreDestroy
+    public void cleanup() {
+        if (openTelemetrySdk != null) {
+            logger.info("Shutting down OpenTelemetry SDK...");
+            openTelemetrySdk.close();
+            logger.info("OpenTelemetry SDK shutdown complete");
+        }
     }
 }
