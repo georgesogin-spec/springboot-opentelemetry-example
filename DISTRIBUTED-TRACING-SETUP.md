@@ -128,9 +128,9 @@ ContextPropagators contextPropagators = ContextPropagators.create(
 
 ## How It Works in Distributed Environments
 
-### Temporal Workers
 
-1. **Context Propagation**: When a Temporal workflow or activity is executed, the B3 propagator automatically:
+
+1. **Context Propagation**: When workflow or activity is executed, the B3 propagator automatically:
    - Extracts trace context from incoming headers
    - Injects trace context into outgoing calls
    - Maintains trace continuity across workflow boundaries
@@ -144,16 +144,6 @@ ContextPropagators contextPropagators = ContextPropagators.create(
    - Workflow executions
    - Activity executions
    - Service-to-service calls
-
-### Example Flow
-
-```
-Client Request → Service A → Temporal Workflow → Worker 1 → Worker 2
-     |              |              |                |          |
-  trace_id=123   trace_id=123  trace_id=123    trace_id=123  trace_id=123
-```
-
-All logs and spans share the same `trace_id`, enabling end-to-end tracing.
 
 ## Configuration
 
