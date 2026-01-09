@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document describes the OpenTelemetry instrumentation setup for distributed environments, including Temporal workers and other distributed systems.
+This document describes the OpenTelemetry instrumentation setup for distributed environments.
 
 ## Key Changes for Distributed Tracing
 
