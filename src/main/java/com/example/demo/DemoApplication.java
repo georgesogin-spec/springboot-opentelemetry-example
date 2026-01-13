@@ -2,11 +2,16 @@ package com.example.demo;
 
 import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.common.Attributes;
+import io.opentelemetry.context.propagation.ContextPropagators;
 import io.opentelemetry.exporter.otlp.logs.OtlpGrpcLogRecordExporter;
+import io.opentelemetry.exporter.otlp.trace.OtlpGrpcSpanExporter;
+import io.opentelemetry.extension.trace.propagation.B3Propagator;
 import io.opentelemetry.sdk.OpenTelemetrySdk;
 import io.opentelemetry.sdk.logs.SdkLoggerProvider;
 import io.opentelemetry.sdk.logs.export.BatchLogRecordProcessor;
 import io.opentelemetry.sdk.resources.Resource;
+import io.opentelemetry.sdk.trace.SdkTracerProvider;
+import io.opentelemetry.sdk.trace.export.BatchSpanProcessor;
 import io.opentelemetry.semconv.ResourceAttributes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,7 +50,7 @@ public class DemoApplication {
 
     @Bean
     public OpenTelemetry openTelemetry() {
-        logger.info("Configuring OpenTelemetry SDK for log forwarding...");
+        logger.info("Configuring OpenTelemetry SDK for log and trace forwarding...");
         
         // Create resource with service information using semantic conventions
         Resource resource = Resource.getDefault()
@@ -66,14 +71,35 @@ public class DemoApplication {
                 .addLogRecordProcessor(BatchLogRecordProcessor.builder(logExporter).build())
                 .build();
 
-        // Build OpenTelemetry SDK with logger provider only
-        // Register globally so the Logback appender can access it
+        // Configure OTLP Span Exporter for traces
+        OtlpGrpcSpanExporter spanExporter = OtlpGrpcSpanExporter.builder()
+                .setEndpoint(otlpEndpoint)
+                .build();
+
+        // Create SdkTracerProvider with batch processor
+        SdkTracerProvider sdkTracerProvider = SdkTracerProvider.builder()
+                .setResource(resource)
+                .addSpanProcessor(BatchSpanProcessor.builder(spanExporter).build())
+                .build();
+
+        // Configure B3 propagator for distributed tracing compatibility
+        // B3 is compatible with Temporal, Zipkin, Jaeger, and other distributed systems
+        ContextPropagators contextPropagators = ContextPropagators.create(
+                B3Propagator.injectingMultiHeaders()
+        );
+
+        // Build OpenTelemetry SDK with logger provider, tracer provider, and propagators
+        // Register globally so the Logback appender and other components can access it
         openTelemetrySdk = OpenTelemetrySdk.builder()
                 .setLoggerProvider(sdkLoggerProvider)
+                .setTracerProvider(sdkTracerProvider)
+                .setPropagators(contextPropagators)
                 .buildAndRegisterGlobal();
 
         logger.info("OpenTelemetry SDK configured successfully!");
         logger.info("Log forwarding enabled to OTLP endpoint");
+        logger.info("Trace forwarding enabled to OTLP endpoint");
+        logger.info("B3 context propagation enabled for distributed tracing");
         logger.debug("OTLP endpoint: {}", otlpEndpoint);
         logger.debug("Service name: {}", serviceName);
 
