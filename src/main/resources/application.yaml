@@ -32,6 +32,8 @@ otel:
       #   Authorization: "Bearer your-token-here"
   logs:
     exporter: otlp
+  traces:
+    exporter: otlp
   resource:
     attributes:
       service.name: ${spring.application.name}
