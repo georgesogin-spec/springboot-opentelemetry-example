@@ -82,6 +82,27 @@
             <version>2.1.0-alpha</version>
         </dependency>
         
+        <!-- OpenTelemetry SDK Trace -->
+        <dependency>
+            <groupId>io.opentelemetry</groupId>
+            <artifactId>opentelemetry-sdk-trace</artifactId>
+            <version>${opentelemetry.version}</version>
+        </dependency>
+        
+        <!-- OpenTelemetry Context Propagation -->
+        <dependency>
+            <groupId>io.opentelemetry</groupId>
+            <artifactId>opentelemetry-context</artifactId>
+            <version>${opentelemetry.version}</version>
+        </dependency>
+        
+        <!-- B3 Propagator for distributed tracing -->
+        <dependency>
+            <groupId>io.opentelemetry</groupId>
+            <artifactId>opentelemetry-extension-trace-propagators</artifactId>
+            <version>${opentelemetry.version}</version>
+        </dependency>
+        
         <!-- SLF4J API (for logging) -->
         <dependency>
             <groupId>org.slf4j</groupId>
